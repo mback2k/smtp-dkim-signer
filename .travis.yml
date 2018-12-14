@@ -1,0 +1,25 @@
+language: go
+
+sudo: false
+
+matrix:
+  include:
+    - go: 1.x
+      env: RELEASE=true
+    - go: master
+  allow_failures:
+    - go: master
+
+after_success:
+  - go build -ldflags="-s -w"
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key:
+    secure: KBIUpq8hOLDghMgDUCWhFAKH0Q+tv/JvkmjTm7rrX3AMzzQl8MsXe1c4BiLmX6GSBcZG2L2EUDCIf1YM1pVroWEJmO1PrPTfeNZ880PenfQbJMsmyd7AdEz+n638IiwbHBfwKaPWQ94kmQWE3l3TW0oKS01eVoNKeAW5m2yJAyScPNZS2ot56UvXC/uXeaLaSkZQaCHYwbpmi9dpaOCwPNtFcGu2NJkbgHGYtPRiCAyrKOHQj7PliVVjt/bycQ0jtL//RXRNh4iP6JTo9cAoG4w+7IrTO9itckGh2ZgID0FbOxDLIjxXTjzTl0Jv6rbg/HDcwK/dSrGF6b0e2I6tO4UkTwTfbCAFx0tAw+SB7iOWqDB1EkuYYSZHydnOFTNMeD2720Cb225TMuIHBnMOziyqNDw7qng2jkhz7IKXQkLgn4uTYyPB7VcVUdiXmrnWukRJvdDcB2klp7WR9AV5MLQSGMgZsOFJEGQlsAjDbfmiW/dXtnapIGanKya+zissAiIkzkcfxE+LKikzeJJ2nYHfYnQgqTsDOMNFMILTY0EUc78w5LaFn5EU8N2qoJwsqoja8iD/eppt690DX/uJyiOvzD4VS9cEpsL4zxjsLoc8De+qYFShIPDmGzG+yXnWQM6xtGKicvuiYJTMQ7FJ493inwVuyH09jo8OeS5vmMk=
+  file: smtp-dkim-signer
+  on:
+    tags: true
+    repo: mback2k/smtp-dkim-signer
+    condition: $RELEASE = true
