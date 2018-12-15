@@ -25,67 +25,108 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"flag"
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"strings"
 
 	dkim "github.com/emersion/go-dkim"
 	smtp "github.com/emersion/go-smtp"
 	smtpproxy "github.com/emersion/go-smtp-proxy"
 	backendutil "github.com/emersion/go-smtp/backendutil"
+	"github.com/spf13/viper"
 )
 
-var headerKeys = []string{"From", "Reply-To", "Subject", "Date", "To", "Cc",
+var (
+	// ErrAuthFailed Error for authentication failure
+	ErrAuthFailed = errors.New("Authentication failed")
+)
+
+var defaultHeaderKeys = []string{
+	"From", "Reply-To", "Subject", "Date", "To", "Cc",
 	"In-Reply-To", "References", "Message-ID",
 	"Resent-Date", "Resent-From", "Resent-To", "Resent-Cc",
 	"List-Id", "List-Help", "List-Unsubscribe", "List-Subscribe",
-	"List-Post", "List-Owner", "List-Archive"}
+	"List-Post", "List-Owner", "List-Archive",
+}
 
-type flags struct {
-	address     string
-	upstream    string
-	domain      string
-	selector    string
-	privkeypath string
-	headercan   string
-	bodycan     string
+type configVHost struct {
+	Domain      string
+	Upstream    string
+	Selector    string
+	PrivKeyPath string
+	HeaderCan   string
+	BodyCan     string
+	HeaderKeys  []string
+}
+
+type config struct {
+	Address         string
+	Domain          string
+	MaxIdleSeconds  int
+	MaxMessageBytes int
+	MaxRecipients   int
+	VirtualHosts    []configVHost
+	HeaderKeys      []string
+}
+
+type backendVHost struct {
+	TransBe *backendutil.TransformBackend
+	ProxyBe *smtpproxy.Backend
+	DkimOpt *dkim.SignOptions
 }
 
 type backend struct {
-	Backend *smtpproxy.Backend
-	Options *dkim.SignOptions
+	VHosts map[string]*backendVHost
 }
 
-func (bkd *backend) Login(username, password string) (smtp.User, error) {
-	return bkd.Backend.Login(username, password)
+func (bkdvh *backendVHost) Login(username, password string) (smtp.User, error) {
+	return bkdvh.ProxyBe.Login(username, password)
 }
 
-func (bkd *backend) AnonymousLogin() (smtp.User, error) {
+func (bkdvh *backendVHost) AnonymousLogin() (smtp.User, error) {
 	return nil, smtp.ErrAuthRequired
 }
 
-func (bkd *backend) Transform(from string, to []string, r io.Reader) (string, []string, io.Reader) {
+func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (string, []string, io.Reader) {
 	pr, pw := io.Pipe()
 	go func() {
 		defer pw.Close()
-		err := dkim.Sign(pw, r, bkd.Options)
+		var b bytes.Buffer
+		tr := io.TeeReader(r, &b)
+		err := dkim.Sign(pw, tr, bkdvh.DkimOpt)
 		if err != nil {
 			log.Println(err)
+			mr := io.MultiReader(&b, r)
+			_, err := io.Copy(pw, mr)
+			if err != nil {
+				log.Println(err)
+			}
 		}
 	}()
 	return from, to, pr
 }
 
-func parseFlags(flags *flags) {
-	flag.StringVar(&((*flags).address), "address", "localhost:1025", "Listening address")
-	flag.StringVar(&((*flags).upstream), "upstream", "", "Upstream SMTP-server")
-	flag.StringVar(&((*flags).domain), "domain", "", "Domain")
-	flag.StringVar(&((*flags).selector), "selector", "", "Selector")
-	flag.StringVar(&((*flags).privkeypath), "privkeypath", "", "Path to private key")
-	flag.StringVar(&((*flags).headercan), "headercan", "relaxed", "Header canonicalization")
-	flag.StringVar(&((*flags).bodycan), "bodycan", "simple", "Body canonicalization")
-	flag.Parse()
+func (bkd *backend) Login(username, password string) (smtp.User, error) {
+	splits := strings.Split(username, "@")
+	if len(splits) < 1 {
+		return nil, ErrAuthFailed
+	}
+	domain := splits[len(splits)-1]
+	if len(domain) < 1 {
+		return nil, ErrAuthFailed
+	}
+	bkdvh, found := bkd.VHosts[domain]
+	if !found {
+		return nil, ErrAuthFailed
+	}
+	return bkdvh.TransBe.Login(username, password)
+}
+
+func (bkd *backend) AnonymousLogin() (smtp.User, error) {
+	return nil, smtp.ErrAuthRequired
 }
 
 func readFile(filepath string) (*bytes.Buffer, error) {
@@ -115,35 +156,88 @@ func loadPrivKey(privkeypath string) (*rsa.PrivateKey, error) {
 	return key, err
 }
 
-func main() {
-	var flags flags
-	parseFlags(&flags)
+func makeOptions(cfg *config, cfgvh *configVHost) (*dkim.SignOptions, error) {
+	if cfg == nil || cfgvh == nil {
+		return nil, fmt.Errorf("this should never happen")
+	}
+	if cfgvh.Domain == "" {
+		return nil, fmt.Errorf("no VirtualHost.Domain specified")
+	}
+	if cfgvh.Selector == "" {
+		return nil, fmt.Errorf("no VirtualHost.Selector specified")
+	}
+	if cfgvh.PrivKeyPath == "" {
+		return nil, fmt.Errorf("no VirtualHost.PrivKeyPath specified")
+	}
 
-	privkey, err := loadPrivKey(flags.privkeypath)
+	if len(cfgvh.HeaderKeys) == 0 {
+		cfgvh.HeaderKeys = cfg.HeaderKeys
+	}
+
+	privkey, err := loadPrivKey(cfgvh.PrivKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load VirtualHost.PrivKeyPath due to: %s", err)
+	}
+
+	dkimopt := &dkim.SignOptions{
+		Domain:                 cfgvh.Domain,
+		Selector:               cfgvh.Selector,
+		Signer:                 privkey,
+		Hash:                   crypto.SHA256,
+		HeaderCanonicalization: cfgvh.HeaderCan,
+		BodyCanonicalization:   cfgvh.BodyCan,
+		HeaderKeys:             cfgvh.HeaderKeys,
+	}
+	return dkimopt, nil
+}
+
+func main() {
+	viper.SetDefault("MaxIdleSeconds", 300)
+	viper.SetDefault("MaxMessageBytes", 10240000)
+	viper.SetDefault("MaxRecipients", 50)
+	viper.SetDefault("HeaderKeys", defaultHeaderKeys)
+	viper.SetConfigName("smtp-dkim-signer")
+	viper.AddConfigPath("/etc/smtp-dkim-signer/")
+	viper.AddConfigPath("$HOME/.smtp-dkim-signer")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	options := &dkim.SignOptions{
-		Domain:                 flags.domain,
-		Selector:               flags.selector,
-		Signer:                 privkey,
-		Hash:                   crypto.SHA256,
-		HeaderCanonicalization: flags.headercan,
-		BodyCanonicalization:   flags.bodycan,
-		HeaderKeys:             headerKeys,
+	var cfg config
+	err = viper.GetViper().UnmarshalExact(&cfg)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	pb := smtpproxy.NewTLS(flags.upstream, &tls.Config{})
-	sb := &backend{Backend: pb, Options: options}
-	tb := &backendutil.TransformBackend{Backend: sb, Transform: sb.Transform}
+	var be backend
+	be.VHosts = make(map[string]*backendVHost)
+	for idx, cfgvh := range cfg.VirtualHosts {
+		log.Printf("VirtualHost #%d: Validating options", idx)
 
-	s := smtp.NewServer(tb)
-	s.Addr = flags.address
-	s.Domain = flags.domain
-	s.MaxIdleSeconds = 300
-	s.MaxMessageBytes = 10240000
-	s.MaxRecipients = 50
+		dkimopt, err := makeOptions(&cfg, &cfgvh)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		proxybe := smtpproxy.NewTLS(cfgvh.Upstream, &tls.Config{})
+		vhostbe := &backendVHost{ProxyBe: proxybe, DkimOpt: dkimopt}
+		vhostbe.TransBe = &backendutil.TransformBackend{
+			Backend:   vhostbe,
+			Transform: vhostbe.Transform,
+		}
+
+		be.VHosts[cfgvh.Domain] = vhostbe
+		log.Printf("VirtualHost #%d: %s via %s", idx, cfgvh.Domain, cfgvh.Upstream)
+	}
+
+	s := smtp.NewServer(&be)
+	s.Addr = cfg.Address
+	s.Domain = cfg.Domain
+	s.MaxIdleSeconds = cfg.MaxIdleSeconds
+	s.MaxMessageBytes = cfg.MaxMessageBytes
+	s.MaxRecipients = cfg.MaxRecipients
 	s.AllowInsecureAuth = true
 
 	log.Println("Starting server at", s.Addr)
