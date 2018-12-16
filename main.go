@@ -68,7 +68,7 @@ type config struct {
 	MaxIdleSeconds  int
 	MaxMessageBytes int
 	MaxRecipients   int
-	VirtualHosts    []configVHost
+	VirtualHosts    []*configVHost
 	HeaderKeys      []string
 }
 
@@ -216,7 +216,7 @@ func main() {
 	for idx, cfgvh := range cfg.VirtualHosts {
 		log.Printf("VirtualHost #%d: Validating options", idx)
 
-		dkimopt, err := makeOptions(&cfg, &cfgvh)
+		dkimopt, err := makeOptions(&cfg, cfgvh)
 		if err != nil {
 			log.Fatal(err)
 		}
