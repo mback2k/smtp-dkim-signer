@@ -28,6 +28,14 @@ var defaultHeaderKeys = []string{
 	"List-Post", "List-Owner", "List-Archive",
 }
 
+type configAcmeLe struct {
+	Agreed        bool
+	Contact       string
+	Challenge     string
+	ChallengeHost string
+	ChallengePort int
+}
+
 type configVHost struct {
 	Domain      string
 	Upstream    string
@@ -42,6 +50,7 @@ type config struct {
 	Address         string
 	Domain          string
 	Secure          bool
+	LetsEncrypt     *configAcmeLe
 	MaxIdleSeconds  int
 	MaxMessageBytes int
 	MaxRecipients   int
@@ -52,6 +61,8 @@ type config struct {
 func loadConfig() (*config, error) {
 	vpr := viper.GetViper()
 	vpr.SetDefault("Secure", false)
+	vpr.SetDefault("LetsEncrypt.Agreed", false)
+	vpr.SetDefault("LetsEncrypt.Challenge", "http")
 	vpr.SetDefault("MaxIdleSeconds", 300)
 	vpr.SetDefault("MaxMessageBytes", 10240000)
 	vpr.SetDefault("MaxRecipients", 50)

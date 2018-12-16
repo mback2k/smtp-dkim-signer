@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	smtp "github.com/emersion/go-smtp"
+	"github.com/mholt/certmagic"
 )
 
 func main() {
@@ -57,10 +58,32 @@ func main() {
 		log.Println("CAUTION: Never try to access this server over the internet!")
 		log.Println("WARNING: Your credentials would be exposed and unprotected!")
 		log.Println(strings.Repeat("-", 60))
-	}
 
-	log.Println("Starting server at", s.Addr)
-	if err := s.ListenAndServe(); err != nil {
-		log.Fatal(err)
+		log.Println("Starting insecure SMTP server at", s.Addr)
+		if err := s.ListenAndServe(); err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		mgc := certmagic.New(certmagic.Config{
+			CA:                      certmagic.LetsEncryptProductionCA,
+			Email:                   cfg.LetsEncrypt.Contact,
+			Agreed:                  cfg.LetsEncrypt.Agreed,
+			DisableHTTPChallenge:    cfg.LetsEncrypt.Challenge != "http",
+			DisableTLSALPNChallenge: cfg.LetsEncrypt.Challenge != "tls-alpn",
+			ListenHost:              cfg.LetsEncrypt.ChallengeHost,
+			AltHTTPPort:             cfg.LetsEncrypt.ChallengePort,
+			AltTLSALPNPort:          cfg.LetsEncrypt.ChallengePort,
+		})
+
+		err := mgc.Manage([]string{cfg.Domain})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		s.TLSConfig = mgc.TLSConfig()
+		log.Println("Starting secure SMTPS server at", s.Addr)
+		if err := s.ListenAndServeTLS(); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
