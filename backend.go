@@ -20,11 +20,14 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	mathrand "math/rand"
 	"strings"
 	"time"
 
@@ -60,15 +63,25 @@ func (bkdvh *backendVHost) AnonymousLogin() (smtp.User, error) {
 }
 
 func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (string, []string, io.Reader) {
+	idbytes := make([]byte, 5)
+	idread, err := rand.Read(idbytes)
+	if err != nil {
+		mathrand.Read(idbytes[idread:])
+	}
+	id := strings.ToUpper(hex.EncodeToString(idbytes))
+
+	log.Printf("Handling message %s from %s to %s", id, from, to)
 	pr, pw := io.Pipe()
 	go func() {
 		defer pw.Close()
+		log.Printf("Signing message %s from %s to %s", id, from, to)
 
 		var s strings.Builder
 		s.WriteString("Received: by ")
 		s.WriteString(bkdvh.ByDomain)
-		s.WriteString(" (smtp-dkim-signer) with ESMTPSA;")
-		s.WriteString("\r\n\t")
+		s.WriteString(" (smtp-dkim-signer) with ESMTPSA id ")
+		s.WriteString(id)
+		s.WriteString(";\r\n\t")
 		s.WriteString(time.Now().UTC().Format("Mon, 2 Jan 2006 15:04:05 -0700 (MST)"))
 		s.WriteString("\r\n")
 		pw.Write([]byte(s.String()))
@@ -77,13 +90,17 @@ func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (str
 		tr := io.TeeReader(r, &b)
 		err := dkim.Sign(pw, tr, bkdvh.DkimOpt)
 		if err != nil {
-			log.Println(err)
+			logerr := fmt.Errorf("unable to sign message %s due to: %s", id, err)
+			log.Println(logerr)
 			mr := io.MultiReader(&b, r)
 			_, err := io.Copy(pw, mr)
 			if err != nil {
-				log.Println(err)
+				logerr := fmt.Errorf("unable to recover message %s due to: %s", id, err)
+				log.Println(logerr)
+				return
 			}
 		}
+		log.Printf("Signed message %s from %s to %s", id, from, to)
 	}()
 	return from, to, pr
 }
