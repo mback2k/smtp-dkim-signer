@@ -31,6 +31,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	dkim "github.com/emersion/go-dkim"
 	smtp "github.com/emersion/go-smtp"
@@ -73,9 +74,10 @@ type config struct {
 }
 
 type backendVHost struct {
-	TransBe *backendutil.TransformBackend
-	ProxyBe *smtpproxy.Backend
-	DkimOpt *dkim.SignOptions
+	ByDomain string
+	TransBe  *backendutil.TransformBackend
+	ProxyBe  *smtpproxy.Backend
+	DkimOpt  *dkim.SignOptions
 }
 
 type backend struct {
@@ -94,6 +96,16 @@ func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (str
 	pr, pw := io.Pipe()
 	go func() {
 		defer pw.Close()
+
+		var s strings.Builder
+		s.WriteString("Received: by ")
+		s.WriteString(bkdvh.ByDomain)
+		s.WriteString(" (smtp-dkim-signer) with ESMTPSA;")
+		s.WriteString("\r\n\t")
+		s.WriteString(time.Now().UTC().Format("Mon, 2 Jan 2006 15:04:05 -0700 (MST)"))
+		s.WriteString("\r\n")
+		pw.Write([]byte(s.String()))
+
 		var b bytes.Buffer
 		tr := io.TeeReader(r, &b)
 		err := dkim.Sign(pw, tr, bkdvh.DkimOpt)
