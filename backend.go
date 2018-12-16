@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -39,10 +40,11 @@ var (
 )
 
 type backendVHost struct {
-	ByDomain string
-	TransBe  *backendutil.TransformBackend
-	ProxyBe  *smtpproxy.Backend
-	DkimOpt  *dkim.SignOptions
+	Description string
+	ByDomain    string
+	TransBe     *backendutil.TransformBackend
+	ProxyBe     *smtpproxy.Backend
+	DkimOpt     *dkim.SignOptions
 }
 
 type backend struct {
@@ -110,14 +112,13 @@ func makeBackend(cfg *config) (*backend, error) {
 	var be backend
 	be.VHosts = make(map[string]*backendVHost)
 	for idx, cfgvh := range cfg.VirtualHosts {
-		log.Printf("VirtualHost #%d: Validating options", idx)
-
 		dkimopt, err := makeOptions(cfg, cfgvh)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to setup VirtualHost #%d due to: %s", idx, err)
 		}
 
 		vhostbe := &backendVHost{ByDomain: cfg.Domain, DkimOpt: dkimopt}
+		vhostbe.Description = fmt.Sprintf("VirtualHost #%d: %s via %s", idx, cfgvh.Domain, cfgvh.Upstream)
 		vhostbe.ProxyBe = smtpproxy.NewTLS(cfgvh.Upstream, &tls.Config{})
 		vhostbe.TransBe = &backendutil.TransformBackend{
 			Backend:   vhostbe,
@@ -125,7 +126,6 @@ func makeBackend(cfg *config) (*backend, error) {
 		}
 
 		be.VHosts[cfgvh.Domain] = vhostbe
-		log.Printf("VirtualHost #%d: %s via %s", idx, cfgvh.Domain, cfgvh.Upstream)
 	}
 	return &be, nil
 }

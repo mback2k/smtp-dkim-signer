@@ -25,14 +25,21 @@ import (
 )
 
 func main() {
+	log.Println("Loading configuration")
 	cfg, err := loadConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	log.Println("Creating backends on", cfg.Domain)
 	be, err := makeBackend(cfg)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	log.Println("VirtualHost overview:")
+	for _, vh := range be.VHosts {
+		log.Println(vh.Description)
 	}
 
 	s := smtp.NewServer(be)
