@@ -203,34 +203,15 @@ func makeOptions(cfg *config, cfgvh *configVHost) (*dkim.SignOptions, error) {
 	return dkimopt, nil
 }
 
-func main() {
-	viper.SetDefault("MaxIdleSeconds", 300)
-	viper.SetDefault("MaxMessageBytes", 10240000)
-	viper.SetDefault("MaxRecipients", 50)
-	viper.SetDefault("HeaderKeys", defaultHeaderKeys)
-	viper.SetConfigName("smtp-dkim-signer")
-	viper.AddConfigPath("/etc/smtp-dkim-signer/")
-	viper.AddConfigPath("$HOME/.smtp-dkim-signer")
-	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var cfg config
-	err = viper.GetViper().UnmarshalExact(&cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func makeBackend(cfg *config) (*backend, error) {
 	var be backend
 	be.VHosts = make(map[string]*backendVHost)
 	for idx, cfgvh := range cfg.VirtualHosts {
 		log.Printf("VirtualHost #%d: Validating options", idx)
 
-		dkimopt, err := makeOptions(&cfg, cfgvh)
+		dkimopt, err := makeOptions(cfg, cfgvh)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		vhostbe := &backendVHost{ByDomain: cfg.Domain, DkimOpt: dkimopt}
@@ -243,8 +224,43 @@ func main() {
 		be.VHosts[cfgvh.Domain] = vhostbe
 		log.Printf("VirtualHost #%d: %s via %s", idx, cfgvh.Domain, cfgvh.Upstream)
 	}
+	return &be, nil
+}
 
-	s := smtp.NewServer(&be)
+func loadConfig() (*config, error) {
+	viper.SetDefault("MaxIdleSeconds", 300)
+	viper.SetDefault("MaxMessageBytes", 10240000)
+	viper.SetDefault("MaxRecipients", 50)
+	viper.SetDefault("HeaderKeys", defaultHeaderKeys)
+	viper.SetConfigName("smtp-dkim-signer")
+	viper.AddConfigPath("/etc/smtp-dkim-signer/")
+	viper.AddConfigPath("$HOME/.smtp-dkim-signer")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg config
+	err = viper.GetViper().UnmarshalExact(&cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func main() {
+	cfg, err := loadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	be, err := makeBackend(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := smtp.NewServer(be)
 	s.Addr = cfg.Address
 	s.Domain = cfg.Domain
 	s.MaxIdleSeconds = cfg.MaxIdleSeconds
