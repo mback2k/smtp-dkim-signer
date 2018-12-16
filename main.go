@@ -37,41 +37,12 @@ import (
 	smtp "github.com/emersion/go-smtp"
 	smtpproxy "github.com/emersion/go-smtp-proxy"
 	backendutil "github.com/emersion/go-smtp/backendutil"
-	"github.com/spf13/viper"
 )
 
 var (
 	// ErrAuthFailed Error for authentication failure
 	ErrAuthFailed = errors.New("Authentication failed")
 )
-
-var defaultHeaderKeys = []string{
-	"From", "Reply-To", "Subject", "Date", "To", "Cc",
-	"In-Reply-To", "References", "Message-ID",
-	"Resent-Date", "Resent-From", "Resent-To", "Resent-Cc",
-	"List-Id", "List-Help", "List-Unsubscribe", "List-Subscribe",
-	"List-Post", "List-Owner", "List-Archive",
-}
-
-type configVHost struct {
-	Domain      string
-	Upstream    string
-	Selector    string
-	PrivKeyPath string
-	HeaderCan   string
-	BodyCan     string
-	HeaderKeys  []string
-}
-
-type config struct {
-	Address         string
-	Domain          string
-	MaxIdleSeconds  int
-	MaxMessageBytes int
-	MaxRecipients   int
-	VirtualHosts    []*configVHost
-	HeaderKeys      []string
-}
 
 type backendVHost struct {
 	ByDomain string
@@ -225,29 +196,6 @@ func makeBackend(cfg *config) (*backend, error) {
 		log.Printf("VirtualHost #%d: %s via %s", idx, cfgvh.Domain, cfgvh.Upstream)
 	}
 	return &be, nil
-}
-
-func loadConfig() (*config, error) {
-	vpr := viper.GetViper()
-	vpr.SetDefault("MaxIdleSeconds", 300)
-	vpr.SetDefault("MaxMessageBytes", 10240000)
-	vpr.SetDefault("MaxRecipients", 50)
-	vpr.SetDefault("HeaderKeys", defaultHeaderKeys)
-	vpr.SetConfigName("smtp-dkim-signer")
-	vpr.AddConfigPath("/etc/smtp-dkim-signer/")
-	vpr.AddConfigPath("$HOME/.smtp-dkim-signer")
-	vpr.AddConfigPath(".")
-	err := vpr.ReadInConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	var cfg config
-	err = vpr.UnmarshalExact(&cfg)
-	if err != nil {
-		return nil, err
-	}
-	return &cfg, nil
 }
 
 func main() {
