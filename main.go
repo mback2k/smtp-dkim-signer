@@ -221,8 +221,8 @@ func main() {
 			log.Fatal(err)
 		}
 
-		proxybe := smtpproxy.NewTLS(cfgvh.Upstream, &tls.Config{})
-		vhostbe := &backendVHost{ProxyBe: proxybe, DkimOpt: dkimopt}
+		vhostbe := &backendVHost{ByDomain: cfg.Domain, DkimOpt: dkimopt}
+		vhostbe.ProxyBe = smtpproxy.NewTLS(cfgvh.Upstream, &tls.Config{})
 		vhostbe.TransBe = &backendutil.TransformBackend{
 			Backend:   vhostbe,
 			Transform: vhostbe.Transform,
