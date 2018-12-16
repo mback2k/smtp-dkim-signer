@@ -5,6 +5,7 @@ before submission to an upstream SMTP-server.
 
 [![Build Status](https://travis-ci.org/mback2k/smtp-dkim-signer.svg?branch=master)](https://travis-ci.org/mback2k/smtp-dkim-signer)
 [![GoDoc](https://godoc.org/github.com/mback2k/smtp-dkim-signer?status.svg)](https://godoc.org/github.com/mback2k/smtp-dkim-signer)
+[![Go Report Card](https://goreportcard.com/badge/github.com/mback2k/smtp-dkim-signer)](https://goreportcard.com/report/github.com/mback2k/smtp-dkim-signer)
 
 Dependencies
 ------------
