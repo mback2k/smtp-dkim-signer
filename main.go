@@ -228,21 +228,22 @@ func makeBackend(cfg *config) (*backend, error) {
 }
 
 func loadConfig() (*config, error) {
-	viper.SetDefault("MaxIdleSeconds", 300)
-	viper.SetDefault("MaxMessageBytes", 10240000)
-	viper.SetDefault("MaxRecipients", 50)
-	viper.SetDefault("HeaderKeys", defaultHeaderKeys)
-	viper.SetConfigName("smtp-dkim-signer")
-	viper.AddConfigPath("/etc/smtp-dkim-signer/")
-	viper.AddConfigPath("$HOME/.smtp-dkim-signer")
-	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
+	vpr := viper.GetViper()
+	vpr.SetDefault("MaxIdleSeconds", 300)
+	vpr.SetDefault("MaxMessageBytes", 10240000)
+	vpr.SetDefault("MaxRecipients", 50)
+	vpr.SetDefault("HeaderKeys", defaultHeaderKeys)
+	vpr.SetConfigName("smtp-dkim-signer")
+	vpr.AddConfigPath("/etc/smtp-dkim-signer/")
+	vpr.AddConfigPath("$HOME/.smtp-dkim-signer")
+	vpr.AddConfigPath(".")
+	err := vpr.ReadInConfig()
 	if err != nil {
 		return nil, err
 	}
 
 	var cfg config
-	err = viper.GetViper().UnmarshalExact(&cfg)
+	err = vpr.UnmarshalExact(&cfg)
 	if err != nil {
 		return nil, err
 	}
