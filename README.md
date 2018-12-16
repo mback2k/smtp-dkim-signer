@@ -42,7 +42,8 @@ VirtualHosts:
   - Domain: your-domain.tld
     Upstream: "your-upstream-smtp:465"
     Selector: "your-dkim-selector"
-    PrivKeyPath: "your-private-key-file"
+    PrivKeyPath: "your-private-key-file" OR |
+      your-private-key-data
     HeaderCan: "relaxed"
     BodyCan: "simple"
 HeaderKeys:
