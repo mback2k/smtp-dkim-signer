@@ -20,6 +20,7 @@ package main
 
 import (
 	"log"
+	"strings"
 
 	smtp "github.com/emersion/go-smtp"
 )
@@ -48,7 +49,15 @@ func main() {
 	s.MaxIdleSeconds = cfg.MaxIdleSeconds
 	s.MaxMessageBytes = cfg.MaxMessageBytes
 	s.MaxRecipients = cfg.MaxRecipients
-	s.AllowInsecureAuth = true
+	s.AllowInsecureAuth = !cfg.Secure
+
+	if !cfg.Secure {
+		log.Println(strings.Repeat("-", 60))
+		log.Println("WARNING: This server is running in insecure mode!")
+		log.Println("CAUTION: Never try to access this server over the internet!")
+		log.Println("WARNING: Your credentials would be exposed and unprotected!")
+		log.Println(strings.Repeat("-", 60))
+	}
 
 	log.Println("Starting server at", s.Addr)
 	if err := s.ListenAndServe(); err != nil {

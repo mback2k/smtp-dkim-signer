@@ -41,6 +41,7 @@ type configVHost struct {
 type config struct {
 	Address         string
 	Domain          string
+	Secure          bool
 	MaxIdleSeconds  int
 	MaxMessageBytes int
 	MaxRecipients   int
@@ -50,6 +51,7 @@ type config struct {
 
 func loadConfig() (*config, error) {
 	vpr := viper.GetViper()
+	vpr.SetDefault("Secure", false)
 	vpr.SetDefault("MaxIdleSeconds", 300)
 	vpr.SetDefault("MaxMessageBytes", 10240000)
 	vpr.SetDefault("MaxRecipients", 50)
