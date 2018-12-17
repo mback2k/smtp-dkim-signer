@@ -62,13 +62,17 @@ func (bkdvh *backendVHost) AnonymousLogin() (smtp.User, error) {
 	return nil, smtp.ErrAuthRequired
 }
 
-func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (string, []string, io.Reader) {
+func generateMessageID() string {
 	idbytes := make([]byte, 5)
 	idread, err := rand.Read(idbytes)
 	if err != nil {
 		mathrand.Read(idbytes[idread:])
 	}
-	id := strings.ToUpper(hex.EncodeToString(idbytes))
+	return strings.ToUpper(hex.EncodeToString(idbytes))
+}
+
+func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (string, []string, io.Reader) {
+	id := generateMessageID()
 
 	log.Printf("Handling message %s from %s to %s", id, from, to)
 	pr, pw := io.Pipe()
