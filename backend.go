@@ -62,7 +62,7 @@ func (bkdvh *backendVHost) AnonymousLogin() (smtp.User, error) {
 	return nil, smtp.ErrAuthRequired
 }
 
-func generateMessageID() string {
+func (bkdvh *backendVHost) generateMessageID() string {
 	idbytes := make([]byte, 5)
 	idread, err := rand.Read(idbytes)
 	if err != nil {
@@ -71,41 +71,44 @@ func generateMessageID() string {
 	return strings.ToUpper(hex.EncodeToString(idbytes))
 }
 
-func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (string, []string, io.Reader) {
-	id := generateMessageID()
+func (bkdvh *backendVHost) signMessage(from string, to []string, r io.Reader, id string, pw *io.PipeWriter) {
+	defer pw.Close()
+	log.Printf("Signing message %s from %s to %s", id, from, to)
 
-	log.Printf("Handling message %s from %s to %s", id, from, to)
-	pr, pw := io.Pipe()
-	go func() {
-		defer pw.Close()
-		log.Printf("Signing message %s from %s to %s", id, from, to)
+	var s strings.Builder
+	s.WriteString("Received: by ")
+	s.WriteString(bkdvh.ByDomain)
+	s.WriteString(" (smtp-dkim-signer) with ESMTPSA id ")
+	s.WriteString(id)
+	s.WriteString(";\r\n\t")
+	s.WriteString(time.Now().UTC().Format("Mon, 2 Jan 2006 15:04:05 -0700 (MST)"))
+	s.WriteString("\r\n")
+	pw.Write([]byte(s.String()))
 
-		var s strings.Builder
-		s.WriteString("Received: by ")
-		s.WriteString(bkdvh.ByDomain)
-		s.WriteString(" (smtp-dkim-signer) with ESMTPSA id ")
-		s.WriteString(id)
-		s.WriteString(";\r\n\t")
-		s.WriteString(time.Now().UTC().Format("Mon, 2 Jan 2006 15:04:05 -0700 (MST)"))
-		s.WriteString("\r\n")
-		pw.Write([]byte(s.String()))
-
-		var b bytes.Buffer
-		tr := io.TeeReader(r, &b)
-		err := dkim.Sign(pw, tr, bkdvh.DkimOpt)
+	var b bytes.Buffer
+	tr := io.TeeReader(r, &b)
+	err := dkim.Sign(pw, tr, bkdvh.DkimOpt)
+	if err != nil {
+		logerr := fmt.Errorf("unable to sign message %s due to: %s", id, err)
+		log.Println(logerr)
+		mr := io.MultiReader(&b, r)
+		_, err := io.Copy(pw, mr)
 		if err != nil {
-			logerr := fmt.Errorf("unable to sign message %s due to: %s", id, err)
+			logerr := fmt.Errorf("unable to recover message %s due to: %s", id, err)
 			log.Println(logerr)
-			mr := io.MultiReader(&b, r)
-			_, err := io.Copy(pw, mr)
-			if err != nil {
-				logerr := fmt.Errorf("unable to recover message %s due to: %s", id, err)
-				log.Println(logerr)
-				return
-			}
+			return
 		}
-		log.Printf("Signed message %s from %s to %s", id, from, to)
-	}()
+	}
+	log.Printf("Signed message %s from %s to %s", id, from, to)
+}
+
+func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (string, []string, io.Reader) {
+	id := bkdvh.generateMessageID()
+	log.Printf("Handling message %s from %s to %s", id, from, to)
+
+	pr, pw := io.Pipe()
+	go bkdvh.signMessage(from, to, r, id, pw)
+
 	return from, to, pr
 }
 
