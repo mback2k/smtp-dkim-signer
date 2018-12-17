@@ -19,6 +19,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/rand"
 	"crypto/tls"
@@ -71,35 +72,40 @@ func (bkdvh *backendVHost) generateMessageID() string {
 	return strings.ToUpper(hex.EncodeToString(idbytes))
 }
 
+func (bkdvh *backendVHost) writeReceivedHeader(id string, pw *io.PipeWriter) error {
+	bw := bufio.NewWriter(pw)
+	bw.WriteString("Received: by ")
+	bw.WriteString(bkdvh.ByDomain)
+	bw.WriteString(" (smtp-dkim-signer) with ESMTPSA id ")
+	bw.WriteString(id)
+	bw.WriteString(";\r\n\t")
+	bw.WriteString(time.Now().UTC().Format("Mon, 2 Jan 2006 15:04:05 -0700 (MST)"))
+	bw.WriteString("\r\n")
+	return bw.Flush()
+}
+
 func (bkdvh *backendVHost) signMessage(from string, to []string, r io.Reader, id string, pw *io.PipeWriter) {
-	defer pw.Close()
-	log.Printf("Signing message %s from %s to %s", id, from, to)
-
-	var s strings.Builder
-	s.WriteString("Received: by ")
-	s.WriteString(bkdvh.ByDomain)
-	s.WriteString(" (smtp-dkim-signer) with ESMTPSA id ")
-	s.WriteString(id)
-	s.WriteString(";\r\n\t")
-	s.WriteString(time.Now().UTC().Format("Mon, 2 Jan 2006 15:04:05 -0700 (MST)"))
-	s.WriteString("\r\n")
-	pw.Write([]byte(s.String()))
-
 	var b bytes.Buffer
+	defer pw.Close()
+
+	log.Printf("Signing message %s from %s to %s", id, from, to)
+	bkdvh.writeReceivedHeader(id, pw)
+
 	tr := io.TeeReader(r, &b)
-	err := dkim.Sign(pw, tr, bkdvh.DkimOpt)
-	if err != nil {
+	if err := dkim.Sign(pw, tr, bkdvh.DkimOpt); err == nil {
+		log.Printf("Signed message %s from %s to %s", id, from, to)
+	} else {
 		logerr := fmt.Errorf("unable to sign message %s due to: %s", id, err)
 		log.Println(logerr)
+
 		mr := io.MultiReader(&b, r)
-		_, err := io.Copy(pw, mr)
-		if err != nil {
+		if _, err := io.Copy(pw, mr); err == nil {
+			log.Printf("Recovered message %s from %s to %s", id, from, to)
+		} else {
 			logerr := fmt.Errorf("unable to recover message %s due to: %s", id, err)
 			log.Println(logerr)
-			return
 		}
 	}
-	log.Printf("Signed message %s from %s to %s", id, from, to)
 }
 
 func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (string, []string, io.Reader) {
