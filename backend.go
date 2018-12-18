@@ -74,13 +74,28 @@ func (bkdvh *backendVHost) generateMessageID() string {
 
 func (bkdvh *backendVHost) writeReceivedHeader(id string, pw *io.PipeWriter) error {
 	bw := bufio.NewWriter(pw)
-	bw.WriteString("Received: by ")
-	bw.WriteString(bkdvh.ByDomain)
-	bw.WriteString(" (smtp-dkim-signer) with ESMTPSA id ")
-	bw.WriteString(id)
-	bw.WriteString(";\r\n\t")
-	bw.WriteString(time.Now().UTC().Format("Mon, 2 Jan 2006 15:04:05 -0700 (MST)"))
-	bw.WriteString("\r\n")
+	if _, err := bw.WriteString("Received: by "); err != nil {
+		return err
+	}
+	if _, err := bw.WriteString(bkdvh.ByDomain); err != nil {
+		return err
+	}
+	if _, err := bw.WriteString(" (smtp-dkim-signer) with ESMTPSA id "); err != nil {
+		return err
+	}
+	if _, err := bw.WriteString(id); err != nil {
+		return err
+	}
+	if _, err := bw.WriteString(";\r\n\t"); err != nil {
+		return err
+	}
+	dt := time.Now().UTC().Format("Mon, 2 Jan 2006 15:04:05 -0700 (MST)")
+	if _, err := bw.WriteString(dt); err != nil {
+		return err
+	}
+	if _, err := bw.WriteString("\r\n"); err != nil {
+		return err
+	}
 	return bw.Flush()
 }
 
