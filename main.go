@@ -20,9 +20,11 @@ package main
 
 import (
 	"log"
+
+	smtp "github.com/emersion/go-smtp"
 )
 
-func main() {
+func setupServer() *smtp.Server {
 	log.Println("Loading configuration")
 	cfg, err := loadConfig()
 	if err != nil {
@@ -47,6 +49,12 @@ func main() {
 			log.Println(err)
 		}
 	}
+	return s
+}
+
+func main() {
+	s := setupServer()
+
 	if err := runServer(s); err != nil {
 		log.Fatal(err)
 	}
