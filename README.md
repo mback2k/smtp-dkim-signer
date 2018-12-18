@@ -16,6 +16,11 @@ the following Go libraries that are the main building blocks of this program:
 - https://github.com/emersion/go-smtp-proxy
 - https://github.com/emersion/go-dkim
 
+Additional dependencies are the following awesome Go libraries:
+
+- https://github.com/mholt/certmagic
+- https://github.com/spf13/viper
+
 Installation
 ------------
 You basically have two options to install this Go program package:
@@ -38,6 +43,11 @@ The following YAML file is an example configuration with one virtual host:
 ```
 Address: "localhost:25"
 Domain: "localhost"
+Secure: true
+LetsEncrypt:
+  Contact: your-name@your-domain.tld
+  Challenge: http
+  ChallengePort: 80
 VirtualHosts:
   - Domain: your-domain.tld
     Upstream: "your-upstream-smtp:465"
