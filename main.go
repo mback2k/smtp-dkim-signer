@@ -46,7 +46,7 @@ func setupServer() *smtp.Server {
 	if cfg.Secure {
 		s.TLSConfig, err = makeTLSConfig(cfg)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 	}
 	return s
