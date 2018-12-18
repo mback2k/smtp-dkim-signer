@@ -20,6 +20,7 @@ package main
 
 import (
 	"log"
+	"runtime"
 
 	smtp "github.com/emersion/go-smtp"
 )
@@ -54,6 +55,8 @@ func setupServer() *smtp.Server {
 
 func main() {
 	s := setupServer()
+
+	runtime.GC()
 
 	if err := runServer(s); err != nil {
 		log.Fatal(err)
