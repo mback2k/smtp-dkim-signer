@@ -19,31 +19,16 @@
 package main
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"os"
+	"io/ioutil"
 	"strings"
 
 	dkim "github.com/emersion/go-dkim"
 )
-
-func readFile(filepath string) (*bytes.Buffer, error) {
-	var b bytes.Buffer
-	f, err := os.Open(filepath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	_, err = b.ReadFrom(f)
-	if err != nil {
-		return nil, err
-	}
-	return &b, err
-}
 
 func loadPrivKey(privkeypath string) (*rsa.PrivateKey, error) {
 	var block *pem.Block
@@ -54,11 +39,11 @@ func loadPrivKey(privkeypath string) (*rsa.PrivateKey, error) {
 	} else {
 		splits := strings.Split(privkeypath, "\n")
 		filepath := strings.TrimSpace(splits[0])
-		b, err := readFile(filepath)
+		bytes, err := ioutil.ReadFile(filepath)
 		if err != nil {
 			return nil, err
 		}
-		block, _ = pem.Decode(b.Bytes())
+		block, _ = pem.Decode(bytes)
 	}
 	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
