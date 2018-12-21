@@ -50,7 +50,7 @@ func setupServer() (*smtp.Server, bool) {
 			log.Fatal(err)
 		}
 	}
-	return server, cfg.Secure
+	return server, cfg.UseSMTPS
 }
 
 func main() {

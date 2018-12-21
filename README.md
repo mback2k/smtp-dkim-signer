@@ -43,8 +43,8 @@ The following YAML file is an example configuration with one virtual host:
 ```
 Address: "localhost:25"
 Domain: "localhost"
-Secure: true
 LetsEncrypt:
+  Agreed: true
   Contact: your-name@your-domain.tld
   Challenge: http
   ChallengePort: 80

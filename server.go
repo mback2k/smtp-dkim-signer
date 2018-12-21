@@ -34,7 +34,7 @@ func makeServer(cfg *config, be *backend) *smtp.Server {
 	s.MaxIdleSeconds = cfg.MaxIdleSeconds
 	s.MaxMessageBytes = cfg.MaxMessageBytes
 	s.MaxRecipients = cfg.MaxRecipients
-	s.AllowInsecureAuth = !cfg.Secure
+	s.AllowInsecureAuth = cfg.AllowInsecureAuth
 	return s
 }
 

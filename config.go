@@ -47,25 +47,27 @@ type configVHost struct {
 }
 
 type config struct {
-	Address         string
-	Domain          string
-	Secure          bool
-	LetsEncrypt     *configAcmeLe
-	MaxIdleSeconds  int
-	MaxMessageBytes int
-	MaxRecipients   int
-	VirtualHosts    []*configVHost
-	HeaderKeys      []string
+	Address           string
+	Domain            string
+	UseSMTPS          bool
+	LetsEncrypt       *configAcmeLe
+	MaxIdleSeconds    int
+	MaxMessageBytes   int
+	MaxRecipients     int
+	AllowInsecureAuth bool
+	VirtualHosts      []*configVHost
+	HeaderKeys        []string
 }
 
 func loadConfig() (*config, error) {
 	vpr := viper.GetViper()
-	vpr.SetDefault("Secure", false)
+	vpr.SetDefault("UseSMTPS", false)
 	vpr.SetDefault("LetsEncrypt.Agreed", false)
 	vpr.SetDefault("LetsEncrypt.Challenge", "http")
 	vpr.SetDefault("MaxIdleSeconds", 300)
 	vpr.SetDefault("MaxMessageBytes", 10240000)
 	vpr.SetDefault("MaxRecipients", 50)
+	vpr.SetDefault("AllowInsecureAuth", false)
 	vpr.SetDefault("HeaderKeys", defaultHeaderKeys)
 	vpr.SetConfigName("smtp-dkim-signer")
 	vpr.AddConfigPath("/etc/smtp-dkim-signer/")
