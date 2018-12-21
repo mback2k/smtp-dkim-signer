@@ -25,7 +25,7 @@ import (
 	smtp "github.com/emersion/go-smtp"
 )
 
-func setupServer() *smtp.Server {
+func setupServer() (*smtp.Server, bool) {
 	log.Println("Loading configuration")
 	cfg, err := loadConfig()
 	if err != nil {
@@ -43,22 +43,22 @@ func setupServer() *smtp.Server {
 		log.Println(vh.Description)
 	}
 
-	s := makeServer(cfg, be)
-	if cfg.Secure {
-		s.TLSConfig, err = makeTLSConfig(cfg)
+	server := makeServer(cfg, be)
+	if cfg.LetsEncrypt.Agreed {
+		server.TLSConfig, err = makeTLSConfig(cfg)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
-	return s
+	return server, cfg.Secure
 }
 
 func main() {
-	s := setupServer()
+	server, smtps := setupServer()
 
 	runtime.GC()
 
-	if err := runServer(s); err != nil {
+	if err := runServer(server, smtps); err != nil {
 		log.Fatal(err)
 	}
 }

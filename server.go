@@ -58,20 +58,22 @@ func makeTLSConfig(cfg *config) (*tls.Config, error) {
 	return mgc.TLSConfig(), nil
 }
 
-func runServer(s *smtp.Server) error {
-	var err error
-	if s.TLSConfig == nil {
+func runServer(server *smtp.Server, smtps bool) error {
+	if server.TLSConfig == nil {
 		log.Println(strings.Repeat("-", 60))
-		log.Println("WARNING: This server is running in insecure mode!")
+		log.Println("WARNING: This server is running without a TLS configuration!")
 		log.Println("CAUTION: Never try to access this server over the internet!")
 		log.Println("WARNING: Your unprotected credentials could be exposed!")
 		log.Println(strings.Repeat("-", 60))
+	}
 
-		log.Println("Starting insecure SMTP server at", s.Addr)
-		err = s.ListenAndServe()
+	var err error
+	if smtps {
+		log.Println("Starting SMTPS server at", server.Addr)
+		err = server.ListenAndServeTLS()
 	} else {
-		log.Println("Starting secure SMTPS server at", s.Addr)
-		err = s.ListenAndServeTLS()
+		log.Println("Starting SMTP server at", server.Addr)
+		err = server.ListenAndServe()
 	}
 	return err
 }
