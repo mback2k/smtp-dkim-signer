@@ -8,7 +8,7 @@ RUN go get
 RUN go build -ldflags="-s -w"
 RUN chmod +x smtp-dkim-signer
 
-FROM alpine:latest
+FROM mback2k/alpine:latest
 RUN apk --no-cache --update upgrade && apk --no-cache add ca-certificates
 
 COPY --from=build /go/src/github.com/mback2k/smtp-dkim-signer/smtp-dkim-signer /usr/local/bin/smtp-dkim-signer
