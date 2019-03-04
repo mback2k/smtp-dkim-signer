@@ -123,14 +123,14 @@ func (bkdvh *backendVHost) signMessage(from string, to []string, r io.Reader, id
 	}
 }
 
-func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (string, []string, io.Reader) {
+func (bkdvh *backendVHost) Transform(from string, to []string, r io.Reader) (string, []string, io.Reader, error) {
 	id := bkdvh.generateMessageID()
 	log.Printf("Handling message %s from %s to %s", id, from, to)
 
 	pr, pw := io.Pipe()
 	go bkdvh.signMessage(from, to, r, id, pw)
 
-	return from, to, pr
+	return from, to, pr, nil
 }
 
 func (bkd *backend) Login(username, password string) (smtp.User, error) {
