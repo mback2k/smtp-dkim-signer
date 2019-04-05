@@ -5,8 +5,13 @@ sudo: false
 matrix:
   include:
     - go: 1.x
-      env: RELEASE=true
+      env:
+        - RELEASE=true
+        - GO111MODULE=on
     - go: master
+      env:
+        - RELEASE=false
+        - GO111MODULE=on
   allow_failures:
     - go: master
 

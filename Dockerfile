@@ -3,6 +3,7 @@ RUN apk --no-cache --update upgrade && apk --no-cache add git
 
 ADD . /go/src/github.com/mback2k/smtp-dkim-signer
 WORKDIR /go/src/github.com/mback2k/smtp-dkim-signer
+ENV GO111MODULE on
 
 RUN go get
 RUN go build -ldflags="-s -w"
