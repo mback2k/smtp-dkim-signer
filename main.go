@@ -39,7 +39,7 @@ func setupServer(cfg *config) (*smtp.Server, bool) {
 	log.Println("Creating backends on", cfg.Domain)
 	be, err := makeBackend(cfg)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	log.Println("VirtualHost overview:")
@@ -51,7 +51,7 @@ func setupServer(cfg *config) (*smtp.Server, bool) {
 	if cfg.LetsEncrypt.Agreed {
 		server.TLSConfig, err = makeTLSConfig(cfg)
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 	}
 	return server, cfg.UseSMTPS
@@ -77,6 +77,6 @@ func main() {
 	runtime.GC()
 
 	if err := runServer(server, smtps); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 }
