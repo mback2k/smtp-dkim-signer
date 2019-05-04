@@ -46,6 +46,11 @@ type configVHost struct {
 	HeaderKeys  []string
 }
 
+type configRollbar struct {
+	AccessToken string
+	Environment string
+}
+
 type config struct {
 	Address           string
 	Domain            string
@@ -57,6 +62,8 @@ type config struct {
 	AllowInsecureAuth bool
 	VirtualHosts      []*configVHost
 	HeaderKeys        []string
+
+	Rollbar *configRollbar
 }
 
 func loadConfig() (*config, error) {

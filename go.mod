@@ -8,5 +8,6 @@ require (
 	github.com/emersion/go-smtp v0.9.0
 	github.com/emersion/go-smtp-proxy v0.0.0-20190110212928-7f11ac451931
 	github.com/mholt/certmagic v0.0.0-20190401183034-f1fdb7fe9cd1
+	github.com/rollbar/rollbar-go v1.0.2
 	github.com/spf13/viper v1.3.2
 )

@@ -23,15 +23,19 @@ import (
 	"runtime"
 
 	smtp "github.com/emersion/go-smtp"
+
+	"github.com/rollbar/rollbar-go"
 )
 
-func setupServer() (*smtp.Server, bool) {
-	log.Println("Loading configuration")
-	cfg, err := loadConfig()
-	if err != nil {
-		log.Fatal(err)
+func reportError() {
+	if r := recover(); r != nil {
+		rollbar.Critical(r)
+		rollbar.Wait()
+		log.Fatal(r)
 	}
+}
 
+func setupServer(cfg *config) (*smtp.Server, bool) {
 	log.Println("Creating backends on", cfg.Domain)
 	be, err := makeBackend(cfg)
 	if err != nil {
@@ -54,7 +58,21 @@ func setupServer() (*smtp.Server, bool) {
 }
 
 func main() {
-	server, smtps := setupServer()
+	log.Println("Loading configuration")
+	cfg, err := loadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if cfg.Rollbar != nil {
+		rollbar.SetToken(cfg.Rollbar.AccessToken)
+		rollbar.SetEnvironment(cfg.Rollbar.Environment)
+		defer reportError()
+		log.Println("Errors will be reported to rollbar.com!")
+	}
+
+	log.Println("Configuring server")
+	server, smtps := setupServer(cfg)
 
 	runtime.GC()
 
