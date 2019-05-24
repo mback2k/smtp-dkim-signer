@@ -1,9 +1,8 @@
 FROM golang:alpine as build
-RUN apk --no-cache --update upgrade && apk --no-cache add git
+RUN apk --no-cache --update upgrade && apk --no-cache add git build-base
 
-ADD . /go/src/github.com/mback2k/smtp-dkim-signer
-WORKDIR /go/src/github.com/mback2k/smtp-dkim-signer
-ENV GO111MODULE on
+ADD . /go/smtp-dkim-signer
+WORKDIR /go/smtp-dkim-signer
 
 RUN go get
 RUN go build -ldflags="-s -w"
@@ -12,7 +11,7 @@ RUN chmod +x smtp-dkim-signer
 FROM mback2k/alpine:latest
 RUN apk --no-cache --update upgrade && apk --no-cache add ca-certificates
 
-COPY --from=build /go/src/github.com/mback2k/smtp-dkim-signer/smtp-dkim-signer /usr/local/bin/smtp-dkim-signer
+COPY --from=build /go/smtp-dkim-signer/smtp-dkim-signer /usr/local/bin/smtp-dkim-signer
 
 RUN addgroup -g 587 -S serve
 RUN adduser -u 587 -h /data -S -D -G serve serve
