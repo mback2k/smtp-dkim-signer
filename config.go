@@ -18,7 +18,11 @@
 
 package main
 
-import "github.com/spf13/viper"
+import (
+	"time"
+
+	"github.com/spf13/viper"
+)
 
 var defaultHeaderKeys = []string{
 	"From", "Reply-To", "Subject", "Date", "To", "Cc",
@@ -56,7 +60,8 @@ type config struct {
 	Domain            string
 	UseSMTPS          bool
 	LetsEncrypt       *configAcmeLe
-	MaxIdleSeconds    int
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
 	MaxMessageBytes   int
 	MaxRecipients     int
 	AllowInsecureAuth bool
@@ -71,8 +76,8 @@ func loadConfig() (*config, error) {
 	vpr.SetDefault("UseSMTPS", false)
 	vpr.SetDefault("LetsEncrypt.Agreed", false)
 	vpr.SetDefault("LetsEncrypt.Challenge", "http")
-	vpr.SetDefault("MaxIdleSeconds", 300)
-	vpr.SetDefault("MaxMessageBytes", 10240000)
+	vpr.SetDefault("ReadTimeout", 10*time.Second)
+	vpr.SetDefault("WriteTimeout", 10*time.Second)
 	vpr.SetDefault("MaxRecipients", 50)
 	vpr.SetDefault("AllowInsecureAuth", false)
 	vpr.SetDefault("HeaderKeys", defaultHeaderKeys)

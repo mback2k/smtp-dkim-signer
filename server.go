@@ -31,7 +31,8 @@ func makeServer(cfg *config, be *backend) *smtp.Server {
 	s := smtp.NewServer(be)
 	s.Addr = cfg.Address
 	s.Domain = cfg.Domain
-	s.MaxIdleSeconds = cfg.MaxIdleSeconds
+	s.ReadTimeout = cfg.ReadTimeout
+	s.WriteTimeout = cfg.WriteTimeout
 	s.MaxMessageBytes = cfg.MaxMessageBytes
 	s.MaxRecipients = cfg.MaxRecipients
 	s.AllowInsecureAuth = cfg.AllowInsecureAuth
@@ -39,16 +40,15 @@ func makeServer(cfg *config, be *backend) *smtp.Server {
 }
 
 func makeTLSConfig(cfg *config) (*tls.Config, error) {
-	mgc := certmagic.New(certmagic.Config{
-		CA:                      certmagic.LetsEncryptProductionCA,
-		Email:                   cfg.LetsEncrypt.Contact,
-		Agreed:                  cfg.LetsEncrypt.Agreed,
-		DisableHTTPChallenge:    cfg.LetsEncrypt.Challenge != "http",
-		DisableTLSALPNChallenge: cfg.LetsEncrypt.Challenge != "tls-alpn",
-		ListenHost:              cfg.LetsEncrypt.ChallengeHost,
-		AltHTTPPort:             cfg.LetsEncrypt.ChallengePort,
-		AltTLSALPNPort:          cfg.LetsEncrypt.ChallengePort,
-	})
+	certmagic.Default.CA = certmagic.LetsEncryptProductionCA
+	certmagic.Default.Email = cfg.LetsEncrypt.Contact
+	certmagic.Default.Agreed = cfg.LetsEncrypt.Agreed
+	certmagic.Default.DisableHTTPChallenge = cfg.LetsEncrypt.Challenge != "http"
+	certmagic.Default.DisableTLSALPNChallenge = cfg.LetsEncrypt.Challenge != "tls-alpn"
+	certmagic.Default.ListenHost = cfg.LetsEncrypt.ChallengeHost
+	certmagic.Default.AltHTTPPort = cfg.LetsEncrypt.ChallengePort
+	certmagic.Default.AltTLSALPNPort = cfg.LetsEncrypt.ChallengePort
+	mgc := certmagic.NewDefault()
 
 	err := mgc.Manage([]string{cfg.Domain})
 	if err != nil {

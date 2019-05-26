@@ -27,7 +27,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	dkim "github.com/emersion/go-dkim"
+	dkim "github.com/emersion/go-msgauth/dkim"
 )
 
 func loadPrivKey(privkeypath string) (*rsa.PrivateKey, error) {
@@ -80,8 +80,8 @@ func makeOptions(cfg *config, cfgvh *configVHost) (*dkim.SignOptions, error) {
 		Selector:               cfgvh.Selector,
 		Signer:                 privkey,
 		Hash:                   crypto.SHA256,
-		HeaderCanonicalization: cfgvh.HeaderCan,
-		BodyCanonicalization:   cfgvh.BodyCan,
+		HeaderCanonicalization: dkim.Canonicalization(cfgvh.HeaderCan),
+		BodyCanonicalization:   dkim.Canonicalization(cfgvh.BodyCan),
 		HeaderKeys:             cfgvh.HeaderKeys,
 	}
 	return dkimopt, nil
