@@ -130,6 +130,8 @@ func (s *sessionState) signMessage(from string, to []string, r io.Reader, id str
 		} else {
 			logerr := fmt.Errorf("unable to recover message %s due to: %s", id, err)
 			log.Println(logerr)
+
+			pw.CloseWithError(err)
 		}
 	}
 }
