@@ -35,7 +35,6 @@ import (
 	dkim "github.com/emersion/go-msgauth/dkim"
 	smtp "github.com/emersion/go-smtp"
 	smtpproxy "github.com/emersion/go-smtp-proxy"
-	backendutil "github.com/mback2k/go-smtp/backendutil"
 )
 
 var (
@@ -46,7 +45,6 @@ var (
 type backendVHost struct {
 	Description string
 	ByDomain    string
-	TransBe     *backendutil.TransformBackend
 	ProxyBe     *smtpproxy.Backend
 	DkimOpt     *dkim.SignOptions
 }
@@ -56,19 +54,24 @@ type backend struct {
 }
 
 type sessionState struct {
-	bkdvh   *backendVHost
-	session *smtp.Session
+	Session smtp.Session
+
+	bkdvh *backendVHost
 
 	from string
 	to   []string
 }
 
-func (bkdvh *backendVHost) Transform(session *smtp.Session, u string) backendutil.TransformHandler {
-	return &sessionState{bkdvh: bkdvh, session: session}
+func (bkdvh *backendVHost) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
+	session, err := bkdvh.Login(state, username, password)
+	if err != nil {
+		return nil, err
+	}
+	return &sessionState{Session: session, bkdvh: bkdvh}, nil
 }
 
-func (bkdvh *backendVHost) AnonymousTransform(s *smtp.Session) backendutil.TransformHandler {
-	return nil
+func (bkdvh *backendVHost) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
+	return nil, smtp.ErrAuthRequired
 }
 
 func (s *sessionState) generateMessageID() string {
@@ -131,33 +134,49 @@ func (s *sessionState) signMessage(from string, to []string, r io.Reader, id str
 	}
 }
 
-func (s *sessionState) TransformReset() {
+func (s *sessionState) Reset() {
 	s.from = ""
 	s.to = nil
+	s.Session.Reset()
 }
 
-func (s *sessionState) TransformMail(from string) (string, error) {
+func (s *sessionState) Mail(from string) error {
+	err := s.Session.Mail(from)
+	if err != nil {
+		return err
+	}
 	s.from = from
-	return from, nil
+	return nil
 }
 
-func (s *sessionState) TransformRcpt(to string) (string, error) {
+func (s *sessionState) Rcpt(to string) error {
+	err := s.Session.Rcpt(to)
+	if err != nil {
+		return err
+	}
 	if s.to != nil {
 		s.to = append(s.to, to)
 	} else {
 		s.to = []string{to}
 	}
-	return to, nil
+	return nil
 }
 
-func (s *sessionState) TransformData(r io.Reader) (io.Reader, error) {
+func (s *sessionState) Data(r io.Reader) error {
 	id := s.generateMessageID()
 	log.Printf("Handling message %s from %s to %s", id, s.from, s.to)
 
 	pr, pw := io.Pipe()
 	go s.signMessage(s.from, s.to, r, id, pw)
 
-	return pr, nil
+	err := s.Session.Data(pr)
+	s.Reset()
+	return err
+}
+
+func (s *sessionState) Logout() error {
+	s.Reset()
+	return s.Session.Logout()
 }
 
 func (bkd *backend) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
@@ -173,7 +192,7 @@ func (bkd *backend) Login(state *smtp.ConnectionState, username, password string
 	if !found {
 		return nil, ErrAuthFailed
 	}
-	return bkdvh.TransBe.Login(state, username, password)
+	return bkdvh.Login(state, username, password)
 }
 
 func (bkd *backend) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
@@ -192,11 +211,6 @@ func makeBackend(cfg *config) (*backend, error) {
 		vhostbe := &backendVHost{ByDomain: cfg.Domain, DkimOpt: dkimopt}
 		vhostbe.Description = fmt.Sprintf("VirtualHost #%d: %s via %s", idx, cfgvh.Domain, cfgvh.Upstream)
 		vhostbe.ProxyBe = smtpproxy.NewTLS(cfgvh.Upstream, &tls.Config{})
-		vhostbe.TransBe = &backendutil.TransformBackend{
-			Backend:            vhostbe.ProxyBe,
-			Transform:          vhostbe.Transform,
-			AnonymousTransform: vhostbe.AnonymousTransform,
-		}
 
 		be.VHosts[cfgvh.Domain] = vhostbe
 	}
