@@ -63,7 +63,7 @@ type sessionState struct {
 }
 
 func (bkdvh *backendVHost) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
-	session, err := bkdvh.Login(state, username, password)
+	session, err := bkdvh.ProxyBe.Login(state, username, password)
 	if err != nil {
 		return nil, err
 	}
