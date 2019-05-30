@@ -20,7 +20,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/hex"
@@ -28,9 +27,10 @@ import (
 	"fmt"
 	"io"
 	"log"
-	mathrand "math/rand"
 	"strings"
 	"time"
+
+	mathrand "math/rand"
 
 	dkim "github.com/emersion/go-msgauth/dkim"
 	smtp "github.com/emersion/go-smtp"
@@ -110,30 +110,23 @@ func (s *sessionState) writeReceivedHeader(id string, pw *io.PipeWriter) error {
 	return bw.Flush()
 }
 
-func (s *sessionState) signMessage(from string, to []string, r io.Reader, id string, pw *io.PipeWriter) {
-	var b bytes.Buffer
-	defer pw.Close()
-
-	log.Printf("Signing message %s from %s to %s", id, from, to)
-	s.writeReceivedHeader(id, pw)
-
-	tr := io.TeeReader(r, &b)
-	if err := dkim.Sign(pw, tr, s.bkdvh.DkimOpt); err == nil {
-		log.Printf("Signed message %s from %s to %s", id, from, to)
-	} else {
-		logerr := fmt.Errorf("unable to sign message %s due to: %s", id, err)
-		log.Println(logerr)
-
-		mr := io.MultiReader(&b, r)
-		if _, err := io.Copy(pw, mr); err == nil {
-			log.Printf("Recovered message %s from %s to %s", id, from, to)
-		} else {
-			logerr := fmt.Errorf("unable to recover message %s due to: %s", id, err)
-			log.Println(logerr)
-
-			pw.CloseWithError(err)
-		}
+func (s *sessionState) signMessage(pw *io.PipeWriter, r io.Reader, id string) {
+	log.Printf("Writing header for message %s", id)
+	if err := s.writeReceivedHeader(id, pw); err != nil {
+		err = fmt.Errorf("unable to write header %s due to: %s", id, err)
+		pw.CloseWithError(err)
+		return
 	}
+
+	log.Printf("Signing message %s", id)
+	if err := dkim.Sign(pw, r, s.bkdvh.DkimOpt); err != nil {
+		err = fmt.Errorf("unable to sign message %s due to: %s", id, err)
+		pw.CloseWithError(err)
+		return
+	}
+
+	log.Printf("Signed message %s", id)
+	pw.Close()
 }
 
 func (s *sessionState) Reset() {
@@ -169,9 +162,13 @@ func (s *sessionState) Data(r io.Reader) error {
 	log.Printf("Handling message %s from %s to %s", id, s.from, s.to)
 
 	pr, pw := io.Pipe()
-	go s.signMessage(s.from, s.to, r, id, pw)
+	go s.signMessage(pw, r, id)
 
 	err := s.Session.Data(pr)
+	if err != nil {
+		log.Printf("Handling message %s failed: %s", id, err)
+	}
+
 	s.Reset()
 	return err
 }
