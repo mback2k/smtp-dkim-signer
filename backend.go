@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"time"
 
@@ -35,6 +34,7 @@ import (
 	dkim "github.com/emersion/go-msgauth/dkim"
 	smtp "github.com/emersion/go-smtp"
 	smtpproxy "github.com/emersion/go-smtp-proxy"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -111,21 +111,21 @@ func (s *sessionState) writeReceivedHeader(id string, pw *io.PipeWriter) error {
 }
 
 func (s *sessionState) signMessage(pw *io.PipeWriter, r io.Reader, id string) {
-	log.Printf("Writing header for message %s", id)
+	log.WithField("message", id).Tracef("Writing header for message %s", id)
 	if err := s.writeReceivedHeader(id, pw); err != nil {
 		err = fmt.Errorf("unable to write header %s due to: %s", id, err)
 		pw.CloseWithError(err)
 		return
 	}
 
-	log.Printf("Signing message %s", id)
+	log.WithField("message", id).Tracef("Signing message %s", id)
 	if err := dkim.Sign(pw, r, s.bkdvh.DkimOpt); err != nil {
 		err = fmt.Errorf("unable to sign message %s due to: %s", id, err)
 		pw.CloseWithError(err)
 		return
 	}
 
-	log.Printf("Signed message %s", id)
+	log.WithField("message", id).Tracef("Signed message %s", id)
 	pw.Close()
 }
 
@@ -159,14 +159,14 @@ func (s *sessionState) Rcpt(to string) error {
 
 func (s *sessionState) Data(r io.Reader) error {
 	id := s.generateMessageID()
-	log.Printf("Handling message %s from %s to %s", id, s.from, s.to)
+	log.WithField("message", id).Infof("Handling message %s from %s to %s", id, s.from, s.to)
 
 	pr, pw := io.Pipe()
 	go s.signMessage(pw, r, id)
 
 	err := s.Session.Data(pr)
 	if err != nil {
-		log.Printf("Handling message %s failed: %s", id, err)
+		log.WithField("message", id).WithError(err).Errorf("Handling message %s failed: %s", id, err)
 	}
 
 	s.Reset()

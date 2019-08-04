@@ -19,32 +19,24 @@
 package main
 
 import (
-	"log"
 	"runtime"
 
-	smtp "github.com/emersion/go-smtp"
+	"github.com/heroku/rollrus"
 
-	"github.com/rollbar/rollbar-go"
+	smtp "github.com/emersion/go-smtp"
+	log "github.com/sirupsen/logrus"
 )
 
-func reportError() {
-	if r := recover(); r != nil {
-		rollbar.Critical(r)
-		rollbar.Wait()
-		log.Fatal(r)
-	}
-}
-
 func setupServer(cfg *config) (*smtp.Server, bool) {
-	log.Println("Creating backends on", cfg.Domain)
+	log.Infof("Creating backends on %s", cfg.Domain)
 	be, err := makeBackend(cfg)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Println("VirtualHost overview:")
+	log.Info("VirtualHost overview:")
 	for _, vh := range be.VHosts {
-		log.Println(vh.Description)
+		log.Info(vh.Description)
 	}
 
 	server := makeServer(cfg, be)
@@ -58,20 +50,27 @@ func setupServer(cfg *config) (*smtp.Server, bool) {
 }
 
 func main() {
-	log.Println("Loading configuration")
+	log.Info("Loading configuration")
 	cfg, err := loadConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if cfg.Rollbar != nil {
-		rollbar.SetToken(cfg.Rollbar.AccessToken)
-		rollbar.SetEnvironment(cfg.Rollbar.Environment)
-		defer reportError()
-		log.Println("Errors will be reported to rollbar.com!")
+	if cfg.Logging != nil {
+		l, err := log.ParseLevel(cfg.Logging.Level)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.SetLevel(l)
 	}
 
-	log.Println("Configuring server")
+	if cfg.Rollbar != nil {
+		rollrus.SetupLogging(cfg.Rollbar.AccessToken, cfg.Rollbar.Environment)
+		defer rollrus.ReportPanic(cfg.Rollbar.AccessToken, cfg.Rollbar.Environment)
+		log.Warn("Errors will be reported to rollbar.com!")
+	}
+
+	log.Info("Configuring server")
 	server, smtps := setupServer(cfg)
 
 	runtime.GC()

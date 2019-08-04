@@ -50,6 +50,10 @@ type configVHost struct {
 	HeaderKeys  []string
 }
 
+type configLogging struct {
+	Level string
+}
+
 type configRollbar struct {
 	AccessToken string
 	Environment string
@@ -68,6 +72,7 @@ type config struct {
 	VirtualHosts      []*configVHost
 	HeaderKeys        []string
 
+	Logging *configLogging
 	Rollbar *configRollbar
 }
 

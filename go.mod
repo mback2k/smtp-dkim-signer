@@ -8,12 +8,14 @@ require (
 	github.com/emersion/go-smtp v0.11.1
 	github.com/emersion/go-smtp-proxy v0.0.0-20190525162413-b8176e451516
 	github.com/go-acme/lego v2.6.0+incompatible // indirect
+	github.com/heroku/rollrus v0.0.0-20190402185137-fde2a6b0b07d
 	github.com/klauspost/cpuid v1.2.1 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mholt/certmagic v0.5.1
 	github.com/miekg/dns v1.1.13 // indirect
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/rollbar/rollbar-go v1.0.2
+	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.4.0
@@ -23,3 +25,11 @@ require (
 	golang.org/x/text v0.3.2 // indirect
 	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
 )
+
+// rollbar-go: feature/pkgerrors-support
+//replace github.com/rollbar/rollbar-go => github.com/fgblomqvist/rollbar-go v1.0.3-0.20190611011802-2edb166832f7
+replace github.com/rollbar/rollbar-go => ../rollbar-go
+
+// rollrus: feature/use-official-rollbar
+//replace github.com/heroku/rollrus => github.com/fgblomqvist/rollrus v0.0.0-20190611010816-d42afa9c59f3
+replace github.com/heroku/rollrus => ../rollrus

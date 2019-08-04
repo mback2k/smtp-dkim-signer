@@ -20,11 +20,11 @@ package main
 
 import (
 	"crypto/tls"
-	"log"
 	"strings"
 
 	smtp "github.com/emersion/go-smtp"
 	"github.com/mholt/certmagic"
+	log "github.com/sirupsen/logrus"
 )
 
 func makeServer(cfg *config, be *backend) *smtp.Server {
@@ -60,19 +60,19 @@ func makeTLSConfig(cfg *config) (*tls.Config, error) {
 
 func runServer(server *smtp.Server, smtps bool) error {
 	if server.TLSConfig == nil {
-		log.Println(strings.Repeat("-", 60))
-		log.Println("WARNING: This server is running without a TLS configuration!")
-		log.Println("CAUTION: Never try to access this server over the internet!")
-		log.Println("WARNING: Your unprotected credentials could be exposed!")
-		log.Println(strings.Repeat("-", 60))
+		log.Warn(strings.Repeat("-", 60))
+		log.Warn("WARNING: This server is running without a TLS configuration!")
+		log.Warn("CAUTION: Never try to access this server over the internet!")
+		log.Warn("WARNING: Your unprotected credentials could be exposed!")
+		log.Warn(strings.Repeat("-", 60))
 	}
 
 	var err error
 	if smtps {
-		log.Println("Starting SMTPS server at", server.Addr)
+		log.Info("Starting SMTPS server at", server.Addr)
 		err = server.ListenAndServeTLS()
 	} else {
-		log.Println("Starting SMTP server at", server.Addr)
+		log.Info("Starting SMTP server at", server.Addr)
 		err = server.ListenAndServe()
 	}
 	return err
