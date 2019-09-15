@@ -15,21 +15,22 @@ require (
 	github.com/miekg/dns v1.1.13 // indirect
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/rollbar/rollbar-go v1.0.2
+	github.com/rollbar/rollbar-go/errors v0.0.0-00010101000000-000000000000
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.4.0
 	golang.org/x/crypto v0.0.0-20190513172903-22d7a77e9e5f // indirect
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
-	golang.org/x/sys v0.0.0-20190528012530-adf421d2caf4 // indirect
 	golang.org/x/text v0.3.2 // indirect
 	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
 )
 
 // rollbar-go: feature/pkgerrors-support
-//replace github.com/rollbar/rollbar-go => github.com/fgblomqvist/rollbar-go v1.0.3-0.20190611011802-2edb166832f7
 replace github.com/rollbar/rollbar-go => ../rollbar-go
 
+// rollbar-go: feature/pkgerrors-support
+replace github.com/rollbar/rollbar-go/errors => ../rollbar-go/errors
+
 // rollrus: feature/use-official-rollbar
-//replace github.com/heroku/rollrus => github.com/fgblomqvist/rollrus v0.0.0-20190611010816-d42afa9c59f3
 replace github.com/heroku/rollrus => ../rollrus

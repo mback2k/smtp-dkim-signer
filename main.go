@@ -22,6 +22,8 @@ import (
 	"runtime"
 
 	"github.com/heroku/rollrus"
+	"github.com/rollbar/rollbar-go"
+	"github.com/rollbar/rollbar-go/errors"
 
 	smtp "github.com/emersion/go-smtp"
 	log "github.com/sirupsen/logrus"
@@ -65,6 +67,7 @@ func main() {
 	}
 
 	if cfg.Rollbar != nil {
+		rollbar.SetStackTracer(errors.StackTracer)
 		rollrus.SetupLogging(cfg.Rollbar.AccessToken, cfg.Rollbar.Environment)
 		defer rollrus.ReportPanic(cfg.Rollbar.AccessToken, cfg.Rollbar.Environment)
 		log.Warn("Errors will be reported to rollbar.com!")
