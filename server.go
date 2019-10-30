@@ -50,7 +50,7 @@ func makeTLSConfig(cfg *config) (*tls.Config, error) {
 	certmagic.Default.AltTLSALPNPort = cfg.LetsEncrypt.ChallengePort
 	mgc := certmagic.NewDefault()
 
-	err := mgc.Manage([]string{cfg.Domain})
+	err := mgc.ManageSync([]string{cfg.Domain})
 	if err != nil {
 		return nil, err
 	}
