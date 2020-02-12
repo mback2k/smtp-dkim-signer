@@ -22,6 +22,7 @@ import (
 	"crypto/tls"
 	"strings"
 
+	"github.com/emersion/go-sasl"
 	smtp "github.com/emersion/go-smtp"
 	"github.com/mholt/certmagic"
 	log "github.com/sirupsen/logrus"
@@ -36,6 +37,18 @@ func makeServer(cfg *config, be *backend) *smtp.Server {
 	s.MaxMessageBytes = cfg.MaxMessageBytes
 	s.MaxRecipients = cfg.MaxRecipients
 	s.AllowInsecureAuth = cfg.AllowInsecureAuth
+	s.EnableAuth(sasl.Login, func(conn *smtp.Conn) sasl.Server {
+		return sasl.NewLoginServer(func(username, password string) error {
+			state := conn.State()
+			session, err := be.Login(&state, username, password)
+			if err != nil {
+				return err
+			}
+
+			conn.SetSession(session)
+			return nil
+		})
+	})
 	return s
 }
 

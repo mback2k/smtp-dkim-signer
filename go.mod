@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/emersion/go-msgauth v0.4.0
+	github.com/emersion/go-sasl v0.0.0-20191210011802-430746ea8b9b
 	github.com/emersion/go-smtp v0.12.1
 	github.com/emersion/go-smtp-proxy v0.0.0-20200210193521-e8e7dd723514
 	github.com/heroku/rollrus v0.1.1
