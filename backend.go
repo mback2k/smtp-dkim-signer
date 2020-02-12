@@ -135,8 +135,8 @@ func (s *sessionState) Reset() {
 	s.Session.Reset()
 }
 
-func (s *sessionState) Mail(from string) error {
-	err := s.Session.Mail(from)
+func (s *sessionState) Mail(from string, opts smtp.MailOptions) error {
+	err := s.Session.Mail(from, opts)
 	if err != nil {
 		return err
 	}
