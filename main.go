@@ -58,7 +58,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if cfg.Logging != nil {
+	if cfg.Logging != nil && cfg.Logging.Level != "" {
 		l, err := log.ParseLevel(cfg.Logging.Level)
 		if err != nil {
 			log.Fatal(err)
@@ -66,7 +66,7 @@ func main() {
 		log.SetLevel(l)
 	}
 
-	if cfg.Rollbar != nil {
+	if cfg.Rollbar != nil && cfg.Rollbar.AccessToken != "" {
 		rollbar.SetStackTracer(errors.StackTracer)
 		rollrus.SetupLogging(cfg.Rollbar.AccessToken, cfg.Rollbar.Environment)
 		defer rollrus.ReportPanic(cfg.Rollbar.AccessToken, cfg.Rollbar.Environment)
