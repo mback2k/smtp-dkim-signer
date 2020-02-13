@@ -22,9 +22,9 @@ import (
 	"crypto/tls"
 	"strings"
 
-	"github.com/emersion/go-sasl"
+	sasl "github.com/emersion/go-sasl"
 	smtp "github.com/emersion/go-smtp"
-	"github.com/mholt/certmagic"
+	certmagic "github.com/mholt/certmagic"
 	log "github.com/sirupsen/logrus"
 )
 
