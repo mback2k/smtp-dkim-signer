@@ -70,6 +70,10 @@ HeaderKeys:
   - "Resent-From"
   - "Resent-To"
   - "Resent-Cc"
+# optional:
+Rollbar:
+  AccessToken: "your-rollbar-access-token"
+  Environment: production
 ```
 
 Save this file in one of the following locations and run `./smtp-dkim-signer`:
@@ -80,7 +84,7 @@ Save this file in one of the following locations and run `./smtp-dkim-signer`:
 
 License
 -------
-Copyright (C) 2018 - 2019, Marc Hoersken <info@marc-hoersken.de>
+Copyright (C) 2018 - 2020, Marc Hoersken <info@marc-hoersken.de>
 
 This software is licensed as described in the file LICENSE, which
 you should have received as part of this software distribution.
