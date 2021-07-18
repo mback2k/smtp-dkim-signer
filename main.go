@@ -19,9 +19,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"runtime"
 
 	"github.com/heroku/rollrus"
+	"github.com/mback2k/smtp-dkim-signer/internal/tlsutil"
 	"github.com/rollbar/rollbar-go"
 	"github.com/rollbar/rollbar-go/errors"
 
@@ -46,6 +48,14 @@ func setupServer(cfg *config) (*smtp.Server, bool) {
 		server.TLSConfig, err = makeTLSConfig(cfg)
 		if err != nil {
 			panic(err)
+		}
+	} else if cfg.TLS != nil && cfg.TLS.KeyPath != "" && cfg.TLS.CertPath != "" {
+		kpr, err := tlsutil.NewKeypairReloader(cfg.TLS.CertPath, cfg.TLS.KeyPath)
+		if err != nil {
+			panic(err)
+		}
+		server.TLSConfig = &tls.Config{
+			GetCertificate: kpr.GetCertificateFunc(),
 		}
 	}
 	return server, cfg.UseSMTPS
