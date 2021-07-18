@@ -40,6 +40,11 @@ type configAcmeLe struct {
 	ChallengePort int
 }
 
+type configTLS struct {
+	CertPath string
+	KeyPath  string
+}
+
 type configVHost struct {
 	Domain      string
 	Upstream    string
@@ -64,6 +69,7 @@ type config struct {
 	Domain            string
 	UseSMTPS          bool
 	LetsEncrypt       *configAcmeLe
+	TLS               *configTLS
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
 	MaxMessageBytes   int
