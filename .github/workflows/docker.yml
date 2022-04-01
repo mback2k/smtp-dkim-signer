@@ -1,0 +1,19 @@
+---
+name: "Publish Docker image"
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: mback2k/action-docker-package@master
+        with:
+          registry_password: ${{ secrets.GITHUB_TOKEN }}
+...
