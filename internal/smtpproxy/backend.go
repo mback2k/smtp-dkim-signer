@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 
-	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 )
 
@@ -96,34 +95,7 @@ func (be *Backend) newConn() (*smtp.Client, error) {
 	return c, nil
 }
 
-func (be *Backend) login(username, password string) (*smtp.Client, error) {
-	c, err := be.newConn()
-	if err != nil {
-		return nil, err
-	}
-
-	auth := sasl.NewPlainClient("", username, password)
-	if err := c.Auth(auth); err != nil {
-		return nil, err
-	}
-
-	return c, nil
-}
-
-func (be *Backend) Login(_ *smtp.Conn, username, password string) (smtp.Session, error) {
-	c, err := be.login(username, password)
-	if err != nil {
-		return nil, err
-	}
-
-	s := &session{
-		c:  c,
-		be: be,
-	}
-	return s, nil
-}
-
-func (be *Backend) AnonymousLogin(state *smtp.Conn) (smtp.Session, error) {
+func (be *Backend) NewSession(*smtp.Conn) (smtp.Session, error) {
 	c, err := be.newConn()
 	if err != nil {
 		return nil, err

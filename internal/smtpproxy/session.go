@@ -1,9 +1,9 @@
 package smtpproxy
 
 import (
-	"fmt"
 	"io"
 
+	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 )
 
@@ -44,5 +44,6 @@ func (s *session) Logout() error {
 }
 
 func (s *session) AuthPlain(username, password string) error {
-	return fmt.Errorf("AUTH not implemented")
+	auth := sasl.NewPlainClient("", username, password)
+	return s.c.Auth(auth)
 }

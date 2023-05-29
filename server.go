@@ -22,7 +22,7 @@ import (
 	"crypto/tls"
 	"strings"
 
-	sasl "github.com/emersion/go-sasl"
+	"github.com/emersion/go-sasl"
 	smtp "github.com/emersion/go-smtp"
 	certmagic "github.com/mholt/certmagic"
 	log "github.com/sirupsen/logrus"
@@ -39,14 +39,7 @@ func makeServer(cfg *config, be *backend) *smtp.Server {
 	s.AllowInsecureAuth = cfg.AllowInsecureAuth
 	s.EnableAuth(sasl.Login, func(conn *smtp.Conn) sasl.Server {
 		return sasl.NewLoginServer(func(username, password string) error {
-			state := conn.State()
-			session, err := be.Login(&state, username, password)
-			if err != nil {
-				return err
-			}
-
-			conn.SetSession(session)
-			return nil
+			return conn.Session().AuthPlain(username, password)
 		})
 	})
 	return s
@@ -82,10 +75,10 @@ func runServer(server *smtp.Server, smtps bool) error {
 
 	var err error
 	if smtps {
-		log.Info("Starting SMTPS server at", server.Addr)
+		log.Info("Starting SMTPS server at ", server.Addr)
 		err = server.ListenAndServeTLS()
 	} else {
-		log.Info("Starting SMTP server at", server.Addr)
+		log.Info("Starting SMTP server at ", server.Addr)
 		err = server.ListenAndServe()
 	}
 	return err
