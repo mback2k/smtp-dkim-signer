@@ -49,6 +49,9 @@ func loadPrivKey(privkeypath string) (*rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := key.Validate(); err != nil {
+		return nil, err
+	}
 	return key, err
 }
 

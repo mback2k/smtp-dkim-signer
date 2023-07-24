@@ -33,7 +33,7 @@ import (
 
 	dkim "github.com/emersion/go-msgauth/dkim"
 	smtp "github.com/emersion/go-smtp"
-	smtpproxy "github.com/emersion/go-smtp-proxy"
+	"github.com/mback2k/smtp-dkim-signer/internal/smtpproxy"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -56,22 +56,11 @@ type backend struct {
 type sessionState struct {
 	Session smtp.Session
 
-	bkdvh *backendVHost
+	backend *backend
+	bkdvh   *backendVHost
 
 	from string
 	to   []string
-}
-
-func (bkdvh *backendVHost) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
-	session, err := bkdvh.ProxyBe.Login(state, username, password)
-	if err != nil {
-		return nil, err
-	}
-	return &sessionState{Session: session, bkdvh: bkdvh}, nil
-}
-
-func (bkdvh *backendVHost) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
-	return nil, smtp.ErrAuthRequired
 }
 
 func (s *sessionState) generateMessageID() string {
@@ -135,7 +124,10 @@ func (s *sessionState) Reset() {
 	s.Session.Reset()
 }
 
-func (s *sessionState) Mail(from string, opts smtp.MailOptions) error {
+func (s *sessionState) Mail(from string, opts *smtp.MailOptions) error {
+	if s.Session == nil {
+		return smtp.ErrAuthRequired
+	}
 	err := s.Session.Mail(from, opts)
 	if err != nil {
 		return err
@@ -145,6 +137,9 @@ func (s *sessionState) Mail(from string, opts smtp.MailOptions) error {
 }
 
 func (s *sessionState) Rcpt(to string) error {
+	if s.Session == nil {
+		return smtp.ErrAuthRequired
+	}
 	err := s.Session.Rcpt(to)
 	if err != nil {
 		return err
@@ -158,6 +153,10 @@ func (s *sessionState) Rcpt(to string) error {
 }
 
 func (s *sessionState) Data(r io.Reader) error {
+	if s.Session == nil {
+		return smtp.ErrAuthRequired
+	}
+
 	id := s.generateMessageID()
 	log.WithField("message", id).Infof("Handling message %s from %s to %s", id, s.from, s.to)
 
@@ -174,28 +173,46 @@ func (s *sessionState) Data(r io.Reader) error {
 }
 
 func (s *sessionState) Logout() error {
+	if s.Session == nil {
+		return smtp.ErrAuthRequired
+	}
 	s.Reset()
 	return s.Session.Logout()
 }
 
-func (bkd *backend) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
+func (bkd *backend) NewSession(state *smtp.Conn) (smtp.Session, error) {
+	return &sessionState{
+		backend: bkd,
+		// Session and bkdvh are filled in on successful AuthPlain().
+	}, nil
+}
+
+func (s *sessionState) AuthPlain(username, password string) error {
 	splits := strings.Split(username, "@")
 	if len(splits) < 1 {
-		return nil, ErrAuthFailed
+		return ErrAuthFailed
 	}
 	domain := splits[len(splits)-1]
 	if len(domain) < 1 {
-		return nil, ErrAuthFailed
+		return ErrAuthFailed
 	}
-	bkdvh, found := bkd.VHosts[domain]
+	bkdvh, found := s.backend.VHosts[domain]
 	if !found {
-		return nil, ErrAuthFailed
+		log.Infof("Auth failed: domain %q not found", domain)
+		return ErrAuthFailed
 	}
-	return bkdvh.Login(state, username, password)
-}
+	s.bkdvh = bkdvh
 
-func (bkd *backend) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
-	return nil, smtp.ErrAuthRequired
+	session, err := bkdvh.ProxyBe.NewSession(nil)
+	if err != nil {
+		return err
+	}
+	if err := session.AuthPlain(username, password); err != nil {
+		return err
+	}
+
+	s.Session = session
+	return nil
 }
 
 func makeBackend(cfg *config) (*backend, error) {
