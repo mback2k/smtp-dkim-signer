@@ -19,12 +19,13 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"strings"
 
+	certmagic "github.com/caddyserver/certmagic"
 	"github.com/emersion/go-sasl"
 	smtp "github.com/emersion/go-smtp"
-	certmagic "github.com/mholt/certmagic"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -46,17 +47,17 @@ func makeServer(cfg *config, be *backend) *smtp.Server {
 }
 
 func makeTLSConfig(cfg *config) (*tls.Config, error) {
-	certmagic.Default.CA = certmagic.LetsEncryptProductionCA
-	certmagic.Default.Email = cfg.LetsEncrypt.Contact
-	certmagic.Default.Agreed = cfg.LetsEncrypt.Agreed
-	certmagic.Default.DisableHTTPChallenge = cfg.LetsEncrypt.Challenge != "http"
-	certmagic.Default.DisableTLSALPNChallenge = cfg.LetsEncrypt.Challenge != "tls-alpn"
-	certmagic.Default.ListenHost = cfg.LetsEncrypt.ChallengeHost
-	certmagic.Default.AltHTTPPort = cfg.LetsEncrypt.ChallengePort
-	certmagic.Default.AltTLSALPNPort = cfg.LetsEncrypt.ChallengePort
+	certmagic.DefaultACME.CA = certmagic.LetsEncryptProductionCA
+	certmagic.DefaultACME.Email = cfg.LetsEncrypt.Contact
+	certmagic.DefaultACME.Agreed = cfg.LetsEncrypt.Agreed
+	certmagic.DefaultACME.DisableHTTPChallenge = cfg.LetsEncrypt.Challenge != "http"
+	certmagic.DefaultACME.DisableTLSALPNChallenge = cfg.LetsEncrypt.Challenge != "tls-alpn"
+	certmagic.DefaultACME.ListenHost = cfg.LetsEncrypt.ChallengeHost
+	certmagic.DefaultACME.AltHTTPPort = cfg.LetsEncrypt.ChallengePort
+	certmagic.DefaultACME.AltTLSALPNPort = cfg.LetsEncrypt.ChallengePort
 	mgc := certmagic.NewDefault()
 
-	err := mgc.ManageSync([]string{cfg.Domain})
+	err := mgc.ManageSync(context.TODO(), []string{cfg.Domain})
 	if err != nil {
 		return nil, err
 	}
